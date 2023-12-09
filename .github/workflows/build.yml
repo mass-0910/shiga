@@ -1,0 +1,44 @@
+on:
+  push:
+  pull_request:
+
+jobs:
+  windows_ci:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install raylib
+        run: vcpkg install raylib:x64-windows
+
+      - name: Configure cmake
+        shell: pwsh
+        run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build with cmake
+        run: cmake --build build -j 4
+
+  web_ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install ninja-build
+        run: sudo apt install -y ninja-build
+
+      - name: Install emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          git pull
+          ./emsdk install latest
+          ./emsdk activate latest
+
+      - name: Configure cmake
+        shell: bash
+        run: |
+          source ./emsdk/emsdk_env.sh
+          cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+
+      - name: Build with cmake
+        run: cmake --build build -j 4
